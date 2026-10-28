@@ -5,9 +5,11 @@
   --text: #1d2733;
   --muted: #5b6876;
   --line: #dde3ea;
-  --avdual: #2f7d4f;
-  --shk: #1f6fb2;
-  --km: #b35a1f;
+  --c1: #1f6fb2;
+  --c2: #b35a1f;
+  --c3: #6b4fa8;
+  --c4: #2f7d4f;
+  --c5: #b0306a;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -16,9 +18,11 @@
     --text: #e8edf2;
     --muted: #9aa7b4;
     --line: #2c3540;
-    --avdual: #5cc28a;
-    --shk: #5aa8ec;
-    --km: #e6935a;
+    --c1: #5aa8ec;
+    --c2: #e6935a;
+    --c3: #a98be6;
+    --c4: #5cc28a;
+    --c5: #e676a8;
   }
 }
 * { box-sizing: border-box; }
@@ -62,9 +66,11 @@ h1 { font-size: 1.8rem; margin: 0 0 4px; }
 }
 .tile h2 { margin: 0 0 4px; font-size: 1.2rem; color: var(--accent, var(--text)); }
 .tile p { margin: 0; color: var(--muted); font-size: 0.95rem; }
-.avdual { --accent: var(--avdual); }
-.shk { --accent: var(--shk); }
-.km { --accent: var(--km); }
+.tk { --accent: var(--c1); }
+.fv { --accent: var(--c2); }
+.wt { --accent: var(--c3); }
+.tm { --accent: var(--c4); }
+.vt { --accent: var(--c5); }
 .empty {
   background: var(--card);
   border: 1px dashed var(--line);

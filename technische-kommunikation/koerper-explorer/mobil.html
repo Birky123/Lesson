@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Körper-Explorer (Mobil)</title>
+<script src="../../lib/three.min.js"></script>
+<style>
+  :root {
+    --bg: #f2efe6;
+    --surface: #fffdf8;
+    --panel-surface: #ffffff;
+    --ink: #202537;
+    --line: #262d43;
+    --muted: #6c7488;
+    --accent: #bf5a2e;
+    --card-border: rgba(32, 38, 58, 0.12);
+    --panel-border: rgba(32, 38, 58, 0.18);
+    --hover: rgba(32, 38, 58, 0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14171f;
+      --surface: #1a1e28;
+      --panel-surface: #1e2330;
+      --ink: #e9ebf2;
+      --line: #d4d9e6;
+      --muted: #8d94a8;
+      --accent: #e08a54;
+      --card-border: rgba(233, 235, 242, 0.12);
+      --panel-border: rgba(233, 235, 242, 0.16);
+      --hover: rgba(233, 235, 242, 0.07);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171f;
+    --surface: #1a1e28;
+    --panel-surface: #1e2330;
+    --ink: #e9ebf2;
+    --line: #d4d9e6;
+    --muted: #8d94a8;
+    --accent: #e08a54;
+    --card-border: rgba(233, 235, 242, 0.12);
+    --panel-border: rgba(233, 235, 242, 0.16);
+    --hover: rgba(233, 235, 242, 0.07);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    overscroll-behavior: none;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+
+  header {
+    padding: 12px 14px 8px;
+    flex: 0 0 auto;
+  }
+
+  h1 {
+    font-weight: 800;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.4;
+    margin: 3px 0 0;
+  }
+
+  nav.solids {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    padding: 6px 10px 10px;
+  }
+
+  nav.solids button {
+    all: unset;
+    cursor: pointer;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    width: 68px;
+    height: 52px;
+    box-sizing: border-box;
+    background-color: var(--surface);
+    border: 1.5px solid var(--card-border);
+    border-radius: 8px;
+    padding: 4px;
+  }
+
+  nav.solids button svg { width: 100%; height: 100%; display: block; }
+
+  nav.solids button.active {
+    background-color: var(--panel-surface);
+    border-color: var(--accent);
+    border-width: 2px;
+  }
+
+  .viewer-wrap {
+    position: relative;
+    flex: 1 1 auto;
+    margin: 0 10px 10px;
+    background: var(--panel-surface);
+    background-image:
+      linear-gradient(var(--card-border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--card-border) 1px, transparent 1px);
+    background-size: 24px 24px;
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    overflow: hidden;
+    touch-action: none;
+    min-height: 260px;
+  }
+
+  .viewer-wrap canvas { display: block; width: 100%; height: 100%; }
+
+  .hint {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--panel-surface);
+    padding: 5px 8px;
+    border-radius: 5px;
+    pointer-events: none;
+    opacity: 0.9;
+  }
+
+  .label {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    max-width: calc(100% - 130px);
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.25;
+    background: var(--panel-surface);
+    padding: 7px 12px;
+    border-radius: 8px;
+    opacity: 0.94;
+  }
+
+  .label.hidden { display: none; }
+
+  .reveal-btn {
+    all: unset;
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--panel-surface);
+    border: 1px dashed var(--panel-border);
+    padding: 7px 14px;
+    border-radius: 8px;
+    opacity: 0.94;
+  }
+  .reveal-btn.hidden { display: none; }
+
+  .reset-btn {
+    all: unset;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    cursor: pointer;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: var(--panel-surface);
+    border: 1px solid var(--panel-border);
+    padding: 9px 12px;
+    border-radius: 8px;
+    opacity: 0.94;
+  }
+
+  .masse-btn {
+    left: auto;
+    right: 10px;
+    top: auto;
+    bottom: 10px;
+  }
+
+  .masse-label {
+    left: auto;
+    right: 10px;
+    top: auto;
+    bottom: 10px;
+    max-width: 62vw;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.6;
+    text-align: left;
+    white-space: pre-line;
+  }
+
+  svg .edge { fill: none; stroke: var(--line); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+  svg .edge-hidden { fill: none; stroke: var(--line); stroke-width: 1.4; stroke-dasharray: 3 3; stroke-linecap: round; }
+  svg .fill-face { fill: var(--line); fill-opacity: 0.045; }
+  svg .hole { fill: var(--line); fill-opacity: 0.045; stroke: var(--line); stroke-width: 1.6; }
+  svg .hole-hidden { fill: none; stroke: var(--line); stroke-width: 1.4; stroke-dasharray: 3 3; stroke-linecap: round; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Körper-Explorer</h1>
+    <p class="subtitle">Körper auswählen und mit dem Finger drehen.</p>
+  </header>
+
+  <nav class="solids" id="solidList"></nav>
+
+  <div class="viewer-wrap" id="viewerWrap">
+    <button class="reveal-btn" id="revealBtn">Name ?</button>
+    <div class="label hidden" id="solidLabel"></div>
+    <button class="reset-btn" id="resetBtn">Zurücksetzen</button>
+    <button class="reveal-btn masse-btn hidden" id="masseBtn">Maße ?</button>
+    <div class="label masse-label hidden" id="masseLabel"></div>
+    <div class="hint">Ziehen zum Drehen</div>
+  </div>
+
+<script>
+  const svgWrap = (inner) => `<svg viewBox="0 0 140 100">${inner}</svg>`;
+
+  const solids = [
+    {
+      name: 'Würfel',
+      build: () => new THREE.BoxGeometry(2, 2, 2),
+      thumb: svgWrap(`
+        <path class="fill-face" d="M35,32 L83,32 L83,80 L35,80 Z"/>
+        <path class="fill-face" d="M35,32 L83,32 L101,18 L53,18 Z"/>
+        <path class="fill-face" d="M83,32 L83,80 L101,66 L101,18 Z"/>
+        <path class="edge" d="M35,32 L83,32 L83,80 L35,80 Z"/>
+        <path class="edge" d="M35,32 L53,18 L101,18 L83,32"/>
+        <path class="edge" d="M83,80 L101,66 L101,18"/>`),
+    },
+    {
+      name: 'Pyramide',
+      build: () => new THREE.ConeGeometry(1.4, 2, 4).rotateY(Math.PI / 4),
+      thumb: svgWrap(`
+        <path class="fill-face" d="M31,80 L70,20 L91,80 Z"/>
+        <path class="edge" d="M31,80 L91,80"/>
+        <path class="edge-hidden" d="M31,80 L49,67"/>
+        <path class="edge" d="M91,80 L109,67"/>
+        <path class="edge-hidden" d="M49,67 L109,67"/>
+        <path class="edge" d="M31,80 L70,20"/>
+        <path class="edge" d="M91,80 L70,20"/>
+        <path class="edge-hidden" d="M49,67 L70,20"/>
+        <path class="edge" d="M109,67 L70,20"/>`),
+    },
+    {
+      name: 'Quader',
+      build: () => new THREE.BoxGeometry(2.6, 1.4, 1.8),
+      thumb: svgWrap(`
+        <path class="fill-face" d="M35,30 L105,30 L105,70 L35,70 Z"/>
+        <path class="fill-face" d="M35,30 L105,30 L121,18 L51,18 Z"/>
+        <path class="fill-face" d="M105,30 L105,70 L121,58 L121,18 Z"/>
+        <path class="edge" d="M35,30 L105,30 L105,70 L35,70 Z"/>
+        <path class="edge" d="M35,30 L51,18 L121,18 L105,30"/>
+        <path class="edge" d="M105,70 L121,58 L121,18"/>`),
+    },
+    {
+      name: 'Zylinder',
+      build: () => new THREE.CylinderGeometry(1, 1, 2, 48),
+      thumb: svgWrap(`
+        <ellipse class="fill-face" cx="70" cy="28" rx="32" ry="11"/>
+        <path class="edge-hidden" d="M38,82 A32,11 0 0 1 102,82"/>
+        <path class="edge" d="M38,28 L38,82 M102,28 L102,82"/>
+        <path class="edge" d="M38,82 A32,11 0 0 0 102,82"/>
+        <ellipse class="edge" cx="70" cy="28" rx="32" ry="11"/>`),
+    },
+    {
+      name: 'Kegel',
+      build: () => new THREE.ConeGeometry(1.2, 2, 48),
+      thumb: svgWrap(`
+        <path class="fill-face" d="M70,22 L38,82 A32,11 0 0 0 102,82 Z"/>
+        <path class="edge-hidden" d="M38,82 A32,11 0 0 1 102,82"/>
+        <path class="edge" d="M70,22 L38,82 M70,22 L102,82"/>
+        <path class="edge" d="M38,82 A32,11 0 0 0 102,82"/>`),
+    },
+    {
+      name: 'Rechteckige Platte mit Bohrung',
+      build: () => buildPlateWithHole(),
+      thumb: svgWrap(`
+        <path class="fill-face" d="M33,58 L107,58 L107,74 L33,74 Z"/>
+        <path class="fill-face" d="M33,58 L107,58 L123,46 L49,46 Z"/>
+        <path class="fill-face" d="M107,58 L107,74 L123,62 L123,46 Z"/>
+        <path class="edge" d="M33,58 L107,58 L107,74 L33,74 Z"/>
+        <path class="edge" d="M33,58 L49,46 L123,46 L107,58"/>
+        <path class="edge" d="M107,74 L123,62 L123,46"/>
+        <ellipse class="hole" cx="78" cy="52" rx="14" ry="5"/>
+        <path class="hole-hidden" d="M64,52 L64,64 M92,52 L92,64"/>
+        <ellipse class="hole-hidden" cx="78" cy="64" rx="14" ry="5"/>`),
+    },
+    {
+      name: 'Kugel',
+      build: () => new THREE.SphereGeometry(1.3, 32, 32),
+      thumb: svgWrap(`
+        <circle class="fill-face" cx="70" cy="55" r="32"/>
+        <path class="edge-hidden" d="M70,23 A10,32 0 0 0 70,87"/>
+        <path class="edge" d="M70,23 A10,32 0 0 1 70,87"/>
+        <path class="edge-hidden" d="M38,55 A32,10 0 0 1 102,55"/>
+        <path class="edge" d="M38,55 A32,10 0 0 0 102,55"/>
+        <circle class="edge" cx="70" cy="55" r="32"/>`),
+    },
+    {
+      name: 'Halbkugel',
+      build: () => buildHemisphere(),
+      thumb: svgWrap(`
+        <path class="fill-face" d="M38,85 A32,32 0 0 1 102,85 Z"/>
+        <path class="edge-hidden" d="M38,85 A32,11 0 0 1 102,85"/>
+        <path class="edge" d="M38,85 A32,11 0 0 0 102,85"/>
+        <path class="edge" d="M38,85 A32,32 0 0 1 102,85"/>`),
+    },
+    {
+      name: 'Dreieckiges Prisma',
+      build: () => buildTriangularPrism(),
+      thumb: svgWrap(`
+        <path class="fill-face" d="M40,85 L100,85 L70,40 Z"/>
+        <path class="fill-face" d="M100,85 L120,70 L90,25 L70,40 Z"/>
+        <path class="edge" d="M40,85 L100,85 L70,40 Z"/>
+        <path class="edge" d="M70,40 L90,25"/>
+        <path class="edge" d="M100,85 L120,70"/>
+        <path class="edge" d="M90,25 L120,70"/>
+        <path class="edge-hidden" d="M40,85 L60,70"/>
+        <path class="edge-hidden" d="M60,70 L120,70"/>
+        <path class="edge-hidden" d="M60,70 L90,25"/>`),
+    },
+    {
+      name: 'Sechseckiges Prisma',
+      build: () => new THREE.CylinderGeometry(1, 1, 2, 6),
+      thumb: svgWrap(`
+        <path class="fill-face" d="M38,35 L54,25 L86,25 L102,35 L86,45 L54,45 Z"/>
+        <path class="edge" d="M38,35 L54,25 L86,25 L102,35 L86,45 L54,45 Z"/>
+        <path class="edge-hidden" d="M102,75 L86,65 L54,65 L38,75"/>
+        <path class="edge" d="M38,75 L54,85 L86,85 L102,75"/>
+        <path class="edge" d="M38,35 L38,75 M102,35 L102,75 M54,45 L54,85 M86,45 L86,85"/>
+        <path class="edge-hidden" d="M54,25 L54,65 M86,25 L86,65"/>`),
+    },
+    {
+      name: 'Pyramidenstumpf',
+      build: () => new THREE.CylinderGeometry(0.6, 1.2, 1.8, 4).rotateY(Math.PI / 4),
+      thumb: svgWrap(`
+        <path class="fill-face" d="M35,90 L105,90 L88,55 L52,55 Z"/>
+        <path class="fill-face" d="M52,55 L88,55 L97,49 L61,49 Z"/>
+        <path class="fill-face" d="M105,90 L88,55 L97,49 L123,77 Z"/>
+        <path class="edge" d="M35,90 L105,90"/>
+        <path class="edge" d="M105,90 L123,77"/>
+        <path class="edge" d="M52,55 L88,55 L61,49 L97,49 Z"/>
+        <path class="edge" d="M35,90 L52,55"/>
+        <path class="edge" d="M105,90 L88,55"/>
+        <path class="edge" d="M123,77 L97,49"/>
+        <path class="edge-hidden" d="M35,90 L53,77 L123,77"/>
+        <path class="edge-hidden" d="M53,77 L61,49"/>`),
+    },
+    {
+      name: 'Kegelstumpf',
+      build: () => new THREE.CylinderGeometry(0.6, 1.2, 1.8, 48),
+      thumb: svgWrap(`
+        <path class="fill-face" d="M38,85 A32,11 0 0 0 102,85 L86,45 A16,6 0 0 1 54,45 Z"/>
+        <path class="edge-hidden" d="M38,85 A32,11 0 0 1 102,85"/>
+        <path class="edge" d="M38,85 A32,11 0 0 0 102,85"/>
+        <ellipse class="edge" cx="70" cy="45" rx="16" ry="6"/>
+        <path class="edge" d="M38,85 L54,45 M102,85 L86,45"/>`),
+    },
+    {
+      name: 'Hohlzylinder (Rohr)',
+      build: () => buildTube(),
+      thumb: svgWrap(`
+        <ellipse class="fill-face" cx="70" cy="28" rx="32" ry="11"/>
+        <path class="edge-hidden" d="M38,82 A32,11 0 0 1 102,82"/>
+        <path class="edge" d="M38,28 L38,82 M102,28 L102,82"/>
+        <path class="edge" d="M38,82 A32,11 0 0 0 102,82"/>
+        <ellipse class="edge" cx="70" cy="28" rx="32" ry="11"/>
+        <path class="hole-hidden" d="M52,28 L52,82 M88,28 L88,82"/>
+        <ellipse class="hole" cx="70" cy="28" rx="18" ry="6"/>`),
+    },
+    {
+      name: 'L-förmiger Körper',
+      build: () => buildLShape(),
+      thumb: svgWrap(`
+        <path class="fill-face" d="M35,90 L85,90 L85,60 L60,60 L60,40 L35,40 Z"/>
+        <path class="fill-face" d="M85,60 L60,60 L78,47 L103,47 Z"/>
+        <path class="fill-face" d="M60,40 L35,40 L53,27 L78,27 Z"/>
+        <path class="fill-face" d="M85,90 L85,60 L103,47 L103,77 Z"/>
+        <path class="fill-face" d="M60,60 L60,40 L78,27 L78,47 Z"/>
+        <path class="edge" d="M35,90 L85,90 L85,60 L60,60 L60,40 L35,40 Z"/>
+        <path class="edge" d="M85,60 L60,60 L78,47 L103,47 Z"/>
+        <path class="edge" d="M60,40 L35,40 L53,27 L78,27 Z"/>
+        <path class="edge" d="M85,90 L85,60 L103,47 L103,77 Z"/>
+        <path class="edge" d="M60,60 L60,40 L78,27 L78,47 Z"/>
+        <path class="edge-hidden" d="M35,90 L53,77 M53,27 L53,77 M53,77 L103,77"/>`),
+    },
+    {
+      name: 'Halteblech',
+      build: () => buildBracketPart(),
+      masse: ['Breite: 86 mm', 'Gesamthöhe: 75 mm', 'Höhe Hauptkörper: 50 mm', 'Höhe Ansatz: 25 mm', 'Breite Ansatz: 40 mm', 'Bohrung: ⌀25 mm', 'Dicke: t = 5 mm', 'Eckenradius: R15'],
+      thumb: svgWrap(`
+        <path class="fill-face" d="M44,85 L96,85 A14,14 0 0 0 110,71 L110,39 L89,39 L89,15 L51,15 L51,39 L30,39 L30,71 A14,14 0 0 0 44,85 Z"/>
+        <path class="edge" d="M44,85 L96,85 A14,14 0 0 0 110,71 L110,39 L89,39 L89,15 L51,15 L51,39 L30,39 L30,71 A14,14 0 0 0 44,85 Z"/>
+        <circle class="edge" cx="55" cy="66" r="12"/>`),
+    },
+  ];
+
+  function centerGeometry(geo) {
+    geo.computeBoundingBox();
+    const c = new THREE.Vector3();
+    geo.boundingBox.getCenter(c);
+    geo.translate(-c.x, -c.y, -c.z);
+    return geo;
+  }
+
+  function buildPlateWithHole() {
+    const shape = new THREE.Shape();
+    shape.moveTo(-1.3, -0.8);
+    shape.lineTo(1.3, -0.8);
+    shape.lineTo(1.3, 0.8);
+    shape.lineTo(-1.3, 0.8);
+    shape.lineTo(-1.3, -0.8);
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, 0.5, 0, Math.PI * 2, false);
+    shape.holes.push(hole);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.4, bevelEnabled: false });
+    geo.rotateX(-Math.PI / 2);
+    return centerGeometry(geo);
+  }
+
+  function buildHemisphere() {
+    const group = new THREE.Group();
+    const dome = new THREE.SphereGeometry(1.3, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    const cap = new THREE.CircleGeometry(1.3, 32);
+    cap.rotateX(Math.PI / 2);
+    group.userData.parts = [dome, cap];
+    return group;
+  }
+
+  function buildTriangularPrism() {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 1);
+    shape.lineTo(-1.1, -0.8);
+    shape.lineTo(1.1, -0.8);
+    shape.lineTo(0, 1);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: 1.8, bevelEnabled: false });
+    geo.translate(0, 0, -0.9);
+    return centerGeometry(geo);
+  }
+
+  function buildTube() {
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, 1.2, 0, Math.PI * 2, false);
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, 0.7, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: 1.8, bevelEnabled: false });
+    geo.rotateX(-Math.PI / 2);
+    return centerGeometry(geo);
+  }
+
+  function buildBracketPart() {
+    // Maße in mm, wie in der Werkstattzeichnung: 86 breit, 50 Hauptkörper-Höhe,
+    // Ansatz 40x25 oben, Bohrung Ø25 bei (27,20), Eckenradius R15 unten, Dicke t=5.
+    const shape = new THREE.Shape();
+    shape.moveTo(15, 0);
+    shape.lineTo(71, 0);
+    shape.absarc(71, 15, 15, -Math.PI / 2, 0, false);
+    shape.lineTo(86, 50);
+    shape.lineTo(63, 50);
+    shape.lineTo(63, 75);
+    shape.lineTo(23, 75);
+    shape.lineTo(23, 50);
+    shape.lineTo(0, 50);
+    shape.lineTo(0, 15);
+    shape.absarc(15, 15, 15, Math.PI, 1.5 * Math.PI, false);
+    const hole = new THREE.Path();
+    hole.absarc(27, 20, 12.5, 0, Math.PI * 2, false);
+    shape.holes.push(hole);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: 5, bevelEnabled: false });
+    geo.scale(0.03, 0.03, 0.03);
+    return centerGeometry(geo);
+  }
+
+  function buildLShape() {
+    const shape = new THREE.Shape();
+    shape.moveTo(-1.1, -1.1);
+    shape.lineTo(1.1, -1.1);
+    shape.lineTo(1.1, 0.1);
+    shape.lineTo(0, 0.1);
+    shape.lineTo(0, 1.1);
+    shape.lineTo(-1.1, 1.1);
+    shape.lineTo(-1.1, -1.1);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: 1.6, bevelEnabled: false });
+    geo.translate(0, 0, -0.8);
+    return centerGeometry(geo);
+  }
+
+  const wrap = document.getElementById('viewerWrap');
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  wrap.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+  const CAM_DIST = 10;
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+  keyLight.position.set(4, 6, 5);
+  scene.add(keyLight);
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
+  fillLight.position.set(-5, -2, -4);
+  scene.add(fillLight);
+
+  const materialColor = 0xd9d2c0;
+  const edgeColor = 0x262d43;
+  const solidMat = new THREE.MeshStandardMaterial({
+    color: materialColor, roughness: 0.85, metalness: 0.05,
+    polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
+  });
+  const edgeMat = new THREE.LineBasicMaterial({ color: edgeColor });
+
+  const pivot = new THREE.Group();
+  scene.add(pivot);
+
+  let radius = 2;
+  let theta = Math.PI / 4;
+  let phi = Math.PI / 2.6;
+  const DEFAULT_THETA = theta, DEFAULT_PHI = phi;
+
+  function updateCamera() {
+    camera.position.set(
+      CAM_DIST * Math.sin(phi) * Math.sin(theta),
+      CAM_DIST * Math.cos(phi),
+      CAM_DIST * Math.sin(phi) * Math.cos(theta)
+    );
+    camera.lookAt(0, 0, 0);
+    const aspect = wrap.clientWidth / wrap.clientHeight;
+    camera.left = -radius * aspect;
+    camera.right = radius * aspect;
+    camera.top = radius;
+    camera.bottom = -radius;
+    camera.updateProjectionMatrix();
+  }
+
+  function resize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    renderer.setSize(w, h);
+  }
+  new ResizeObserver(resize).observe(wrap);
+  resize();
+
+  function clearPivot() {
+    while (pivot.children.length) {
+      const obj = pivot.children.pop();
+      obj.geometry && obj.geometry.dispose();
+      pivot.remove(obj);
+    }
+  }
+
+  function addMeshWithEdges(geo) {
+    const mesh = new THREE.Mesh(geo, solidMat);
+    pivot.add(mesh);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 20), edgeMat);
+    pivot.add(edges);
+  }
+
+  function addRim(radius, y) {
+    const pts = [];
+    for (let i = 0; i <= 64; i++) {
+      const a = (i / 64) * Math.PI * 2;
+      pts.push(new THREE.Vector3(Math.cos(a) * radius, y, Math.sin(a) * radius));
+    }
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    pivot.add(new THREE.Line(geo, edgeMat));
+  }
+
+  function loadSolid(index) {
+    clearPivot();
+    const result = solids[index].build();
+    if (result instanceof THREE.Group) {
+      result.userData.parts.forEach(g => addMeshWithEdges(g));
+    } else {
+      addMeshWithEdges(result);
+    }
+    if (solids[index].name === 'Halbkugel') addRim(1.3, 0);
+    const box = new THREE.Box3().setFromObject(pivot);
+    const size = box.getSize(new THREE.Vector3()).length();
+    radius = Math.max(size * 0.7, 1.5);
+    document.getElementById('solidLabel').textContent = solids[index].name;
+    hideName();
+    hideMasse(index);
+  }
+
+  const revealBtn = document.getElementById('revealBtn');
+  const solidLabel = document.getElementById('solidLabel');
+  const masseBtn = document.getElementById('masseBtn');
+  const masseLabel = document.getElementById('masseLabel');
+
+  function hideName() {
+    solidLabel.classList.add('hidden');
+    revealBtn.classList.remove('hidden');
+  }
+
+  revealBtn.addEventListener('click', () => {
+    solidLabel.classList.remove('hidden');
+    revealBtn.classList.add('hidden');
+  });
+
+  function hideMasse(index) {
+    masseLabel.classList.add('hidden');
+    if (solids[index].masse) {
+      masseLabel.textContent = solids[index].masse.join('\n');
+      masseBtn.classList.remove('hidden');
+    } else {
+      masseBtn.classList.add('hidden');
+    }
+  }
+
+  masseBtn.addEventListener('click', () => {
+    masseLabel.classList.remove('hidden');
+    masseBtn.classList.add('hidden');
+  });
+
+  let autoRotate = true;
+  let dragging = false, lastX = 0, lastY = 0;
+
+  wrap.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button')) return;
+    dragging = true;
+    autoRotate = false;
+    lastX = e.clientX; lastY = e.clientY;
+    wrap.setPointerCapture(e.pointerId);
+  });
+  wrap.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    theta -= dx * 0.009;
+    phi = Math.min(Math.max(phi - dy * 0.009, 0.0015), Math.PI - 0.0015);
+  });
+  wrap.addEventListener('pointerup', (e) => {
+    if (!dragging) return;
+    dragging = false;
+    wrap.releasePointerCapture(e.pointerId);
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    theta = DEFAULT_THETA; phi = DEFAULT_PHI;
+    const box = new THREE.Box3().setFromObject(pivot);
+    const size = box.getSize(new THREE.Vector3()).length();
+    radius = Math.max(size * 0.7, 1.5);
+    autoRotate = true;
+  });
+
+  const listEl = document.getElementById('solidList');
+  solids.forEach((s, i) => {
+    const btn = document.createElement('button');
+    btn.innerHTML = s.thumb;
+    btn.title = s.name;
+    btn.setAttribute('aria-label', s.name);
+    btn.addEventListener('click', () => {
+      listEl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadSolid(i);
+      theta = DEFAULT_THETA; phi = DEFAULT_PHI;
+      autoRotate = true;
+      btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    });
+    listEl.appendChild(btn);
+  });
+  listEl.children[0].classList.add('active');
+  loadSolid(0);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (autoRotate) theta += 0.003;
+    updateCamera();
+    renderer.render(scene, camera);
+  }
+  animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fachwörter-Zuordnung</title>
+<style>
+/* Layout: Beamer-Tafel – oben Leiste, Mitte 3×3 Bildkarten, unten die Wortleiste. Bewusst nur helles Thema (Beamer). */
+:root{
+  --bg:#eef1f4; --card:#ffffff; --ink:#23303D; --muted:#55606B; --line:#C9D1D9;
+  --accent:#C2410C; --accent-soft:#FBE3D4; --ok:#2B7A46; --ok-soft:#E3F1E7; --bad:#B42318;
+  --f:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --f-head:Georgia,"Times New Roman",serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.35;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.app{max-width:1600px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:10px;padding-block:10px 12px}
+@media (min-width:761px){.app{height:100vh;height:100dvh}}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+h1{font-family:var(--f-head);font-size:clamp(22px,2.4vw,34px);margin:0;flex:1 1 auto;text-wrap:balance}
+.count{font-size:clamp(16px,1.5vw,22px);font-weight:700;font-variant-numeric:tabular-nums;padding:4px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line)}
+.tools{display:flex;gap:6px;flex-wrap:wrap}
+button{font:inherit;color:inherit;cursor:pointer}
+.tb{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 12px;font-weight:600;font-size:15px}
+.tb:hover{border-color:var(--ink)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.hint{margin:0;color:var(--muted);font-size:clamp(14px,1.2vw,18px)}
+.grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:760px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:none}}
+@media (max-width:460px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{position:relative;display:flex;flex-direction:column;background:var(--card);border:2px solid var(--line);border-radius:12px;padding:8px;text-align:center;min-width:0}
+.card svg{flex:1 1 auto;min-height:60px;width:100%;height:100%;display:block}
+@media (max-width:760px){.card svg{height:auto;flex:none}}
+.slot{flex:none;margin-top:4px;min-height:40px;border:2px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-size:clamp(17px,1.6vw,26px);font-weight:700;color:var(--muted);padding:4px 8px}
+.card.target{cursor:pointer}
+.card.target:hover,.card.over{border-color:var(--accent);background:#FFF8F3}
+.card.done{border-color:var(--ok);background:var(--ok-soft);cursor:default}
+.card.done .slot{border-style:solid;border-color:var(--ok);color:var(--ok);background:#fff}
+.expl{flex:none;margin:3px 2px 0;font-size:clamp(13px,1.05vw,17px);color:var(--ink)}
+.card.wrong{animation:shake .4s;border-color:var(--bad)}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.words{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;min-height:64px;align-items:center}
+.chip{touch-action:none;user-select:none;-webkit-user-select:none;border:2px solid var(--ink);background:#fff;border-radius:999px;padding:8px 18px;
+  font-size:clamp(17px,1.6vw,26px);font-weight:700}
+.chip.sel{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip.drag{opacity:.35}
+.ghost{position:fixed;z-index:50;pointer-events:none;transform:translate(-50%,-50%);border:2px solid var(--accent);background:var(--accent);color:#fff;
+  border-radius:999px;padding:8px 18px;font:700 clamp(17px,1.6vw,26px) var(--f);box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.fin{font-size:clamp(18px,1.6vw,26px);font-weight:700;color:var(--ok)}
+/* Zeichnungen */
+.l{fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.f{fill:#fff;stroke:var(--ink);stroke-width:3;stroke-linejoin:round}
+.g{fill:#E6EAEE;stroke:var(--ink);stroke-width:3;stroke-linejoin:round}
+.a{fill:var(--accent);stroke:var(--ink);stroke-width:2.5;stroke-linejoin:round}
+.as{fill:var(--accent-soft);stroke:var(--ink);stroke-width:3;stroke-linejoin:round}
+.al{fill:none;stroke:var(--accent);stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
+@media (prefers-reduced-motion:reduce){.card.wrong{animation:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Welches Fachwort passt zum Bild?</h1>
+    <span class="count" id="count" aria-live="polite">0 von 9</span>
+    <div class="tools">
+      <button class="tb" type="button" id="bMix">Neu mischen</button>
+      <button class="tb" type="button" id="bSol">Lösung zeigen</button>
+      <button class="tb" type="button" id="bFull">Vollbild</button>
+    </div>
+  </header>
+  <p class="hint">Ziehe ein Wort auf das passende Bild. Oder tippe zuerst auf das Wort und dann auf das Bild.</p>
+  <main class="grid" id="grid"></main>
+  <div class="words" id="words" aria-label="Fachwörter"></div>
+</div>
+
+<script>
+(function(){
+const ITEMS=[
+ {w:"Schneide",e:"Die vordere Kante am Keil. Sie dringt in den Werkstoff ein.",svg:`
+  <rect class="g" x="14" y="62" width="62" height="22" rx="8"/><circle cx="34" cy="73" r="3" fill="#23303D"/><circle cx="56" cy="73" r="3" fill="#23303D"/>
+  <path class="f" d="M76,58 L184,58 Q192,60 186,68 L128,92 L76,92 Z"/>
+  <path class="al" d="M80,92 L128,92 L186,68"/>`},
+ {w:"Stirnfläche",e:"Die vordere Fläche von einem Teil.",svg:`
+  <path class="f" d="M50,46 L84,24 L176,24 L142,46 Z"/><path class="g" d="M142,46 L176,24 L176,92 L142,114 Z"/>
+  <rect class="as" x="50" y="46" width="92" height="68"/>
+  <path class="l" d="M66,40 L150,40 M86,30 L164,30" stroke-width="1.6"/><path class="l" d="M152,58 L166,50 M152,80 L166,72" stroke-width="1.6"/>
+  <path class="l" d="M30,80 L46,80" /><path d="M48,80 l-9,-5 v10 z" fill="#23303D"/>`},
+ {w:"Span",e:"Das Stück Werkstoff, das das Werkzeug abhebt.",svg:`
+  <path class="f" d="M14,76 L86,64 L86,92 L14,80 Z"/><path class="l" d="M14,76 L14,80"/>
+  <path class="g" d="M86,52 L150,52 L150,104 L86,104 Z"/>
+  <path class="a" d="M118,52 C112,30 136,18 152,28 C168,38 160,60 144,58 C132,56 132,42 142,40 C150,40 150,48 146,50"/>`},
+ {w:"Schnittbewegung",e:"Die Bewegung, mit der das Werkzeug schneidet.",svg:`
+  <circle class="f" cx="92" cy="98" r="34"/><path class="l" d="M92,64 C88,56 90,50 96,46"/><path class="as" d="M96,52 C106,40 120,44 120,44 C114,56 104,58 96,52 Z"/>
+  <rect class="g" x="82" y="6" width="20" height="26" rx="5"/><path class="f" d="M84,32 L100,32 L100,82 L84,70 Z"/>
+  <path class="al" d="M140,22 L140,92"/><path d="M140,104 l-11,-16 h22 z" fill="var(--accent)"/>`},
+ {w:"Reibung",e:"Zwei Teile reiben aneinander. Dabei werden sie warm.",svg:`
+  <path class="f" d="M40,120 L40,78 C40,70 46,66 52,68 L52,40 C52,32 64,32 64,40 L64,62 L64,34 C64,26 76,26 76,34 L76,62 L76,38 C76,30 88,30 88,38 L88,66 L88,46 C88,38 100,38 100,46 L100,92 C100,108 90,120 76,120 Z"/>
+  <path class="g" d="M168,120 L168,78 C168,70 162,66 156,68 L156,40 C156,32 144,32 144,40 L144,62 L144,34 C144,26 132,26 132,34 L132,62 L132,38 C132,30 120,30 120,38 L120,66 L120,46 C120,38 108,38 108,46 L108,92 C108,108 118,120 132,120 Z"/>
+  <path class="al" d="M22,134 L60,134 M186,134 L148,134"/><path d="M14,134 l12,-7 v14 z M194,134 l-12,-7 v14 z" fill="var(--accent)"/>
+  <path class="al" d="M96,22 q-5,-6 0,-12 q5,-6 0,-12 M112,22 q-5,-6 0,-12 q5,-6 0,-12" stroke-width="3.5"/>`},
+ {w:"schaben",e:"Über eine Fläche kratzen, statt sauber zu schneiden.",svg:`
+  <path class="f" d="M24,70 L176,70 L162,128 L38,128 Z"/><path class="as" d="M28,70 C60,62 140,62 172,70 Z"/>
+  <path class="g" d="M150,20 L112,58" stroke-width="10" style="fill:none;stroke:#E6EAEE"/><path class="l" d="M150,18 L112,58"/>
+  <path class="f" d="M86,58 C86,44 112,44 116,58 C116,70 88,72 86,58 Z"/>
+  <path class="as" d="M60,66 C52,58 58,48 68,52 C74,56 70,62 64,60"/>
+  <path class="al" d="M124,84 L66,84"/><path d="M56,84 l14,-8 v16 z" fill="var(--accent)"/>`},
+ {w:"stauchen",e:"Etwas zusammendrücken. Es wird kürzer und dicker.",svg:`
+  <rect class="g" x="174" y="20" width="14" height="104"/>
+  <path class="as" d="M20,110 L70,110 C78,110 80,82 92,82 C104,82 104,110 112,110 C120,110 122,74 136,74 C150,74 150,110 158,110 L174,110 L174,120 L20,120 Z"/>
+  <path class="l" d="M10,124 L174,124"/>
+  <path class="al" d="M14,94 L46,94"/><path d="M56,94 l-14,-8 v16 z" fill="var(--accent)"/>`},
+ {w:"abfließen",e:"Der Span läuft gleichmäßig vom Werkzeug weg.",svg:`
+  <path class="l" d="M176,14 L118,46"/><path class="f" d="M74,48 C80,30 112,30 120,44 C126,56 96,70 74,48 Z"/>
+  <path class="a" d="M80,54 C76,70 84,84 80,100 C78,108 86,108 86,100 C90,86 86,70 92,58 Z"/>
+  <path class="f" d="M40,108 L130,108 C126,128 110,134 86,134 C62,134 46,128 40,108 Z"/>
+  <path class="as" d="M66,110 C76,104 92,104 104,110 Z"/>`},
+ {w:"schleifen",e:"Ein Werkzeug an einem Schleifstein bearbeiten. So wird es scharf.",svg:`
+  <rect class="g" x="20" y="92" width="160" height="30" rx="3"/>
+  <circle cx="44" cy="104" r="1.8" fill="#23303D"/><circle cx="76" cy="112" r="1.8" fill="#23303D"/><circle cx="112" cy="102" r="1.8" fill="#23303D"/><circle cx="148" cy="112" r="1.8" fill="#23303D"/><circle cx="164" cy="100" r="1.8" fill="#23303D"/>
+  <path class="f" d="M48,90 L130,62 L136,74 L56,92 Z"/><rect class="g" x="128" y="50" width="56" height="20" rx="7" transform="rotate(-18 156 60)"/>
+  <path class="al" d="M70,40 L130,24"/><path d="M60,43 l15,-12 l3,13 z M140,21 l-15,-3 l9,11 z" fill="var(--accent)"/>`}
+];
+const $=s=>document.querySelector(s);
+const grid=$('#grid'),words=$('#words'),count=$('#count');
+let sel=null,done=new Set();
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+function render(){
+  done=new Set();sel=null;
+  grid.innerHTML=shuffle(ITEMS).map(it=>`<button type="button" class="card target" data-w="${it.w}">
+     <svg viewBox="0 0 200 140" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${it.svg}</svg>
+     <span class="slot">?</span></button>`).join('');
+  grid.querySelectorAll('.card').forEach(c=>c.setAttribute('aria-label','Bild '+(Array.from(grid.children).indexOf(c)+1)));
+  words.innerHTML=shuffle(ITEMS).map(it=>`<button type="button" class="chip" data-w="${it.w}">${it.w}</button>`).join('');
+  upd();
+}
+function upd(){count.textContent=done.size+' von '+ITEMS.length;
+  if(done.size===ITEMS.length&&!words.querySelector('.fin'))words.innerHTML='<span class="fin">Alle Fachwörter richtig zugeordnet!</span>';}
+function place(card,w){
+  const it=ITEMS.find(x=>x.w===w);done.add(w);
+  card.classList.remove('target','over');card.classList.add('done');card.disabled=true;
+  card.querySelector('.slot').textContent=w;
+  const p=document.createElement('p');p.className='expl';p.textContent=it.e;card.appendChild(p);
+  const ch=words.querySelector(`.chip[data-w="${w}"]`);if(ch)ch.remove();
+  upd();
+}
+function tryDrop(card,w){
+  if(!card||card.classList.contains('done'))return;
+  if(card.dataset.w===w){place(card,w)}else{card.classList.remove('wrong');void card.offsetWidth;card.classList.add('wrong');setTimeout(()=>card.classList.remove('wrong'),450)}
+  setSel(null);
+}
+function setSel(ch){words.querySelectorAll('.chip.sel').forEach(c=>c.classList.remove('sel'));sel=ch?ch.dataset.w:null;if(ch)ch.classList.add('sel')}
+grid.addEventListener('click',e=>{const c=e.target.closest('.card');if(c&&sel)tryDrop(c,sel)});
+// Ziehen mit Maus, Finger oder Stift
+let drag=null;
+words.addEventListener('pointerdown',e=>{const ch=e.target.closest('.chip');if(!ch)return;
+  drag={ch,x:e.clientX,y:e.clientY,moved:false,ghost:null,id:e.pointerId};ch.setPointerCapture(e.pointerId)});
+words.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;
+  if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8){drag.moved=true;
+    const g=document.createElement('div');g.className='ghost';g.textContent=drag.ch.dataset.w;document.body.appendChild(g);drag.ghost=g;drag.ch.classList.add('drag')}
+  if(drag.moved){drag.ghost.style.left=e.clientX+'px';drag.ghost.style.top=e.clientY+'px';
+    grid.querySelectorAll('.over').forEach(c=>c.classList.remove('over'));
+    const el=document.elementFromPoint(e.clientX,e.clientY);const c=el&&el.closest('.card.target');if(c)c.classList.add('over')}});
+function endDrag(e){if(!drag||e.pointerId!==drag.id)return;const d=drag;drag=null;
+  if(d.moved){d.ghost.remove();d.ch.classList.remove('drag');grid.querySelectorAll('.over').forEach(c=>c.classList.remove('over'));
+    const el=document.elementFromPoint(e.clientX,e.clientY);tryDrop(el&&el.closest('.card'),d.ch.dataset.w)}
+  else{setSel(sel===d.ch.dataset.w?null:d.ch)}}
+words.addEventListener('pointerup',endDrag);words.addEventListener('pointercancel',e=>{if(drag&&drag.ghost)drag.ghost.remove();if(drag)drag.ch.classList.remove('drag');drag=null});
+// Tastatur: Wort mit Enter wählen, dann Bild mit Enter
+words.addEventListener('keydown',e=>{const ch=e.target.closest('.chip');if(ch&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setSel(sel===ch.dataset.w?null:ch)}});
+$('#bMix').addEventListener('click',render);
+$('#bSol').addEventListener('click',()=>{grid.querySelectorAll('.card.target').forEach(c=>place(c,c.dataset.w))});
+$('#bFull').addEventListener('click',()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{})}catch(e){}});
+render();
+})();
+</script>
+</body>
+</html>

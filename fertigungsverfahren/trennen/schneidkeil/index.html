@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Schneidkeil-Simulator</title>
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0;padding:0}img{max-width:100%}</style>
+</head>
+<body>
+<style>
+/* Layout: Werkstattblatt – große Zeichnung links, Regler rechts; auf dem Handy untereinander */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#1b2836; --muted:#5b6a7a; --line:#c9d2db;
+  --tool:#d7dee6; --work:#e9e2d6; --chip:#b8743a;
+  --a:#1c64c8; --b:#d0480f; --g:#23843a; --d:#6b45d8; --warn:#b42318;
+  --f-display:"Arial Narrow","Roboto Condensed","Liberation Sans Narrow",system-ui,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:ui-monospace,Consolas,"DejaVu Sans Mono",monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131a22; --panel:#1b242f; --ink:#e4eaf0; --muted:#97a6b5; --line:#33414f;
+  --tool:#3a4756; --work:#4a4236; --chip:#d58f52;
+  --a:#5b9bf0; --b:#f07a44; --g:#4cc068; --d:#9f85f2; --warn:#f2685c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131a22; --panel:#1b242f; --ink:#e4eaf0; --muted:#97a6b5; --line:#33414f;
+  --tool:#3a4756; --work:#4a4236; --chip:#d58f52;
+  --a:#5b9bf0; --b:#f07a44; --g:#4cc068; --d:#9f85f2; --warn:#f2685c; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45}
+.wrap{max-width:1240px;margin:0 auto;padding-block:20px 32px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;margin-bottom:14px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(28px,4vw,40px);margin:0;letter-spacing:.01em;text-wrap:balance}
+header p{margin:0;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px;min-width:0}
+svg{display:block;width:100%;height:auto}
+.side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+.box h2{font-family:var(--f-display);font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px}
+.ctl{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px 12px;margin-bottom:12px}
+.ctl label{font-weight:600}
+.sym{font-family:var(--f-display);font-weight:700;font-size:22px;display:inline-block;width:1.1em}
+.val{font-family:var(--f-mono);font-size:20px;min-width:3.4em;text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{grid-column:1/-1;width:100%;height:34px;margin:0}
+#sa{accent-color:var(--a)} #sb{accent-color:var(--b)}
+.calc{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:5px;background:color-mix(in srgb,var(--g) 10%,transparent);border:1px dashed var(--g)}
+.calc .sym{color:var(--g)}
+.calc small{color:var(--muted);display:block}
+.eq{font-family:var(--f-mono);font-size:19px;text-align:center;padding:10px 4px;border-top:1px solid var(--line);margin-top:12px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.eq .ca{color:var(--a)} .eq .cb{color:var(--b)} .eq .cg{color:var(--g)}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:5px;padding:8px 12px;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--a);outline-offset:2px}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.toggles{display:flex;flex-direction:column;gap:8px}
+.toggles label{display:flex;gap:10px;align-items:center;cursor:pointer}
+.toggles input{width:20px;height:20px;accent-color:var(--ink)}
+.obs{display:flex;flex-direction:column;gap:12px}
+.meter .top{display:flex;justify-content:space-between;gap:8px;font-weight:600}
+.meter .top span:last-child{font-weight:500;color:var(--muted)}
+.bar{height:10px;border-radius:5px;background:var(--line);overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;border-radius:5px;background:var(--ink);transition:width .2s}
+.msg{padding:8px 10px;border-radius:5px;border-left:4px solid var(--line);background:var(--bg)}
+.msg.warn{border-left-color:var(--warn)}
+.msg.warn b{color:var(--warn)}
+.hidevals .val,.hidevals .lbl-val,.hidevals .eq{visibility:hidden}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+<div class="wrap" id="app">
+  <header>
+    <h1>Schneidkeil-Simulator</h1>
+    <p>Stelle Freiwinkel α und Keilwinkel β ein und beobachte den Spanwinkel γ.</p>
+  </header>
+
+  <div class="grid">
+    <div class="stage">
+      <svg id="svg" viewBox="0 0 800 520" role="img" aria-label="Schneidkeil im Werkstück mit Freiwinkel, Keilwinkel und Spanwinkel">
+        <defs>
+          <pattern id="hTool" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="12" height="12" fill="var(--tool)"/><line x1="0" y1="0" x2="0" y2="12" stroke="var(--muted)" stroke-width="1.2" opacity=".55"/>
+          </pattern>
+          <pattern id="hWork" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+            <rect width="14" height="14" fill="var(--work)"/><line x1="0" y1="0" x2="0" y2="14" stroke="var(--muted)" stroke-width="1" opacity=".35"/>
+          </pattern>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink)"/>
+          </marker>
+        </defs>
+        <g id="scene"></g>
+      </svg>
+    </div>
+
+    <div class="side">
+      <div class="box">
+        <h2>Winkel einstellen</h2>
+        <div class="ctl">
+          <label for="sa"><span class="sym" style="color:var(--a)">α</span> Freiwinkel</label><span></span>
+          <span class="val" id="va">8°</span>
+          <input type="range" id="sa" min="0" max="20" step="1" value="8">
+        </div>
+        <div class="ctl">
+          <label for="sb"><span class="sym" style="color:var(--b)">β</span> Keilwinkel</label><span></span>
+          <span class="val" id="vb">60°</span>
+          <input type="range" id="sb" min="20" max="100" step="1" value="60">
+        </div>
+        <div class="calc">
+          <span class="sym">γ</span>
+          <div style="flex:1"><b>Spanwinkel</b><small>ergibt sich von selbst</small></div>
+          <span class="val" id="vg">22°</span>
+        </div>
+        <div class="eq" id="eq"></div>
+      </div>
+
+      <div class="box">
+        <h2>Was passiert?</h2>
+        <div class="obs">
+          <div class="meter"><div class="top"><span>Dringt ins Material ein</span><span id="tPen"></span></div><div class="bar"><i id="mPen"></i></div></div>
+          <div class="meter"><div class="top"><span>Schneide ist stabil</span><span id="tStab"></span></div><div class="bar"><i id="mStab"></i></div></div>
+          <div class="msg" id="msgA"></div>
+          <div class="msg" id="msgG"></div>
+        </div>
+      </div>
+
+      <div class="box">
+        <h2>Beispiele aus dem Fachbuch</h2>
+        <div class="presets">
+          <button type="button" data-a="6" data-b="75">Harter Werkstoff (Vergütungsstahl)</button>
+          <button type="button" data-a="10" data-b="45">Weicher Werkstoff (Alu-Legierung)</button>
+          <button type="button" data-a="15" data-b="50">Kunststoff</button>
+          <button type="button" data-a="6" data-b="90">Wendeschneidplatte (β = 90°)</button>
+        </div>
+        <p class="note">Die Zahlen sind Beispiele. Das Fachbuch sagt nur „groß“ oder „klein“, genaue Werte stehen im Tabellenbuch.</p>
+      </div>
+
+      <div class="box">
+        <h2>Anzeige</h2>
+        <div class="toggles">
+          <label><input type="checkbox" id="tHide"> Zahlenwerte verstecken (zum Schätzen)</label>
+          <label><input type="checkbox" id="tNames" checked> Flächen beschriften</label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const sa=$('sa'), sb=$('sb'), scene=$('scene');
+  const P={x:410,y:330}, Ys=298, rad=d=>d*Math.PI/180;
+  const pt=(th,r)=>({x:P.x+r*Math.cos(rad(th)), y:P.y-r*Math.sin(rad(th))});
+  const f=n=>n.toFixed(1);
+
+  function arc(t1,t2,r,color,w){
+    if(Math.abs(t2-t1)<0.01) return '';
+    const lo=Math.min(t1,t2), hi=Math.max(t1,t2);
+    const p1=pt(lo,r), p2=pt(hi,r);
+    return `<path d="M${f(p1.x)},${f(p1.y)} A${r},${r} 0 0 0 ${f(p2.x)},${f(p2.y)}" fill="none" stroke="${color}" stroke-width="${w||3}"/>`;
+  }
+  function label(t1,t2,r,txt,color,v,hideOk){
+    const m=pt((t1+t2)/2,r);
+    return `<text x="${f(m.x)}" y="${f(m.y)}" fill="${color}" font-family="Barlow Condensed,Arial Narrow,sans-serif" font-weight="700" font-size="26" text-anchor="middle" dominant-baseline="middle">${txt}<tspan class="lbl-val" font-size="18" dx="3">${v}°</tspan></text>`;
+  }
+
+  function draw(){
+    let a=+sa.value, b=+sb.value;
+    if(90-a-b<-25){ b=115-a; sb.value=b; }
+    const g=90-a-b;
+    const css=getComputedStyle(document.documentElement);
+    const C=k=>css.getPropertyValue(k).trim();
+
+    // Richtungen (SVG: y nach unten)
+    const r={x:Math.sin(rad(g)), y:-Math.cos(rad(g))};       // Spanfläche
+    const fr={x:Math.cos(rad(a)), y:-Math.sin(rad(a))};      // Freifläche
+    const n={x:-Math.cos(rad(g)), y:-Math.sin(rad(g))};      // Normale vor der Spanfläche
+    const L=300, hc=44;
+    const F={x:P.x+L*fr.x, y:P.y+L*fr.y}, B={x:P.x+L*r.x, y:P.y+L*r.y};
+    const Cn={x:F.x+B.x-P.x, y:F.y+B.y-P.y};
+    // Spanaußenkante schneidet Oberfläche
+    const ts=(Ys-P.y-n.y*hc)/r.y;
+    const S={x:P.x+n.x*hc+r.x*ts, y:Ys};
+    const Lc=Math.max(ts+70,120);
+    const E1={x:P.x+r.x*Lc, y:P.y+r.y*Lc};
+    const E2={x:E1.x+n.x*hc, y:E1.y+n.y*hc};
+    const cp={x:E1.x+r.x*hc*.9+n.x*hc*.5, y:E1.y+r.y*hc*.9+n.y*hc*.5};
+
+    const names=$('tNames').checked;
+    let s='';
+    // Werkstück
+    s+=`<polygon points="0,${Ys} ${f(S.x)},${Ys} ${P.x},${P.y} 800,${P.y} 800,520 0,520" fill="url(#hWork)" stroke="${C('--ink')}" stroke-width="2"/>`;
+    // Span
+    s+=`<path d="M${P.x},${P.y} L${f(E1.x)},${f(E1.y)} Q${f(cp.x)},${f(cp.y)} ${f(E2.x)},${f(E2.y)} L${f(S.x)},${f(S.y)} Z" fill="${C('--chip')}" stroke="${C('--ink')}" stroke-width="1.5" opacity=".9"/>`;
+    // Werkzeug
+    s+=`<polygon points="${P.x},${P.y} ${f(F.x)},${f(F.y)} ${f(Cn.x)},${f(Cn.y)} ${f(B.x)},${f(B.y)}" fill="url(#hTool)" stroke="${C('--ink')}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    // Bezugslinien
+    s+=`<line x1="${P.x}" y1="${P.y}" x2="${P.x}" y2="${P.y-250}" stroke="${C('--muted')}" stroke-width="1.5" stroke-dasharray="7 6"/>`;
+    s+=`<line x1="${P.x}" y1="${P.y}" x2="790" y2="${P.y}" stroke="${C('--muted')}" stroke-width="1.5" stroke-dasharray="7 6"/>`;
+    // Winkelbögen
+    s+=arc(0,a,200,C('--a'),3.5);
+    s+=arc(a,90-g,95,C('--b'),3.5);
+    s+=arc(90-g,90,150,C('--g'),3.5);
+    // Beschriftung Winkel
+    s+=label(0,Math.max(a,1),225+(a<6?8:0),'α',C('--a'),a);
+    s+=label(a,90-g,125,'β',C('--b'),b);
+    if(Math.abs(g)>0.5) s+=label(90-g,90,180,'γ',C('--g'),g);
+    else { const m=pt(90,180); s+=`<text x="${m.x+16}" y="${m.y}" fill="${C('--g')}" font-family="Barlow Condensed,sans-serif" font-weight="700" font-size="26" dominant-baseline="middle">γ<tspan class="lbl-val" font-size="18" dx="3">0°</tspan></text>`; }
+    // Flächennamen
+    if(names){
+      const t='font-family="Barlow,sans-serif" font-size="16" font-weight="600"';
+      const mf={x:P.x+fr.x*290, y:P.y+fr.y*290};
+      s+=`<text x="${f(mf.x-4)}" y="${f(mf.y+22)}" fill="${C('--ink')}" ${t} text-anchor="end">Freifläche</text>`;
+      const mr={x:P.x+r.x*260, y:P.y+r.y*260};
+      s+=`<text x="${f(mr.x+12)}" y="${f(mr.y)}" fill="${C('--ink')}" ${t}>Spanfläche</text>`;
+      s+=`<text x="${f(E2.x-10)}" y="${f(E2.y)}" fill="${C('--ink')}" ${t} text-anchor="end">Span</text>`;
+      s+=`<text x="40" y="430" fill="${C('--ink')}" ${t}>Werkstück</text>`;
+      s+=`<text x="${f((P.x+Cn.x)/2+40)}" y="${f(Math.max(40,(P.y+Cn.y)/2-40))}" fill="${C('--ink')}" ${t}>Schneidkeil</text>`;
+      s+=`<text x="780" y="${P.y+22}" fill="${C('--muted')}" ${t} text-anchor="end">bearbeitete Fläche</text>`;
+      s+=`<text x="${P.x-8}" y="${P.y-238}" fill="${C('--muted')}" ${t} text-anchor="end">Senkrechte</text>`;
+    }
+    // Schnittrichtung
+    s+=`<line x1="300" y1="480" x2="120" y2="480" stroke="${C('--ink')}" stroke-width="2.5" marker-end="url(#arr)"/>`;
+    s+=`<text x="310" y="486" fill="${C('--ink')}" font-family="Barlow,sans-serif" font-size="16">Werkzeug bewegt sich</text>`;
+    scene.innerHTML=s;
+
+    // Werte
+    $('va').textContent=a+'°'; $('vb').textContent=b+'°'; $('vg').textContent=g+'°';
+    $('eq').innerHTML=`<span class="ca">${a}°</span> + <span class="cb">${b}°</span> + <span class="cg">${g}°</span> = 90°`;
+
+    // Beobachtungen
+    const pen=Math.round(100*(1-(b-20)/80)), stab=100-pen;
+    $('mPen').style.width=pen+'%'; $('mStab').style.width=stab+'%';
+    $('tPen').textContent=pen>66?'leicht':pen>33?'mittel':'schwer';
+    $('tStab').textContent=stab>66?'sehr stabil':stab>33?'mittel':'bricht leicht';
+    const mA=$('msgA'), mG=$('msgG');
+    if(a===0){mA.className='msg warn';mA.innerHTML='<b>Freiwinkel 0°:</b> Die Freifläche reibt am Werkstück. Das Werkzeug schneidet nicht frei.';}
+    else if(a<7){mA.className='msg';mA.innerHTML='<b>Kleiner Freiwinkel:</b> Gut für harte, kurzspanende Werkstoffe, z. B. hochlegierte Stähle.';}
+    else if(a<12){mA.className='msg';mA.innerHTML='<b>Mittlerer Freiwinkel:</b> Das Werkzeug schneidet frei, die Reibung ist gering.';}
+    else {mA.className='msg';mA.innerHTML='<b>Großer Freiwinkel:</b> Gut für weiche, plastisch verformbare Werkstoffe, z. B. Kunststoffe.';}
+    if(g<0){mG.className='msg';mG.innerHTML='<b>Negativer Spanwinkel:</b> Sehr stabile Schneide, der Span bricht schnell. Typisch für Wendeschneidplatten.';}
+    else if(g<12){mG.className='msg';mG.innerHTML='<b>Kleiner positiver Spanwinkel:</b> Die Schneide ist stabil. Gut für harte, spröde Werkstoffe.';}
+    else if(g<25){mG.className='msg';mG.innerHTML='<b>Mittlerer positiver Spanwinkel:</b> Der Span läuft gut über die Spanfläche ab.';}
+    else {mG.className='msg';mG.innerHTML='<b>Großer positiver Spanwinkel:</b> Es entstehen lange Späne. Gut für weiche Werkstoffe.';}
+  }
+
+  sa.addEventListener('input',draw); sb.addEventListener('input',draw);
+  $('tNames').addEventListener('change',draw);
+  $('tHide').addEventListener('change',e=>$('app').classList.toggle('hidevals',e.target.checked));
+  document.querySelectorAll('.presets button').forEach(btn=>btn.addEventListener('click',()=>{sa.value=btn.dataset.a;sb.value=btn.dataset.b;draw();}));
+  try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);}catch(e){}
+  new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  draw();
+})();
+</script>
+
+</body></html>
